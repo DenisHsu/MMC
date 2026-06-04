@@ -1,0 +1,12 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "發生錯誤";
+}
+
+<h1>發生非預期錯誤</h1>
+<p>很抱歉，系統發生了錯誤，請稍後再試。</p>
+
+@if (Model.ShowRequestId)
+{
+    <p class="note">Request ID：<code>@Model.RequestId</code></p>
+}
