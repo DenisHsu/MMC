@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] ?? "台股籌碼分析")</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <nav class="topnav">
+        <div class="nav-inner">
+            <a class="nav-brand" asp-controller="Home" asp-action="Index">台股籌碼分析</a>
+            <div class="nav-links">
+                <a asp-controller="Home"  asp-action="Index">推薦個股</a>
+                <a asp-controller="Stock" asp-action="Index">個股分析</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        @RenderBody()
+    </div>
+    <footer class="site-footer">
+        <p>資料來源：Yahoo Finance、台灣證券交易所 (TWSE)｜本站僅供參考，不構成投資建議</p>
+    </footer>
+</body>
+</html>

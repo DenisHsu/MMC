@@ -1,0 +1,90 @@
+@model HomeViewModel
+@{
+    ViewData["Title"] = "推薦個股";
+}
+
+<h1>近期建議買入個股</h1>
+<p class="subtitle">
+    依三大法人籌碼 + 費波那契位置自動篩選，每 30 分鐘更新
+    @if (Model.LastUpdated.HasValue)
+    {
+        <span>｜最後更新：@Model.LastUpdated.Value.ToString("HH:mm:ss")</span>
+    }
+</p>
+
+@if (Model.HasError)
+{
+    <p class="error-msg">⚠️ @Model.ErrorMessage</p>
+}
+
+@if (!Model.HasData && !Model.HasError)
+{
+    <p class="info-msg">今日尚無符合篩選條件的個股，可能原因：收盤資料未更新、假日，或篩選池內無明顯籌碼集中的個股。</p>
+}
+
+@if (Model.HasData)
+{
+    <div class="rec-table-wrap">
+        <table class="rec-table">
+            <thead>
+                <tr>
+                    <th>代號 / 名稱</th>
+                    <th>現價</th>
+                    <th>買點</th>
+                    <th>目標</th>
+                    <th>停損</th>
+                    <th>漲幅 / 跌幅</th>
+                    <th>評分</th>
+                    <th>建議</th>
+                    <th>主要理由</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Recommendations)
+                {
+                    <tr>
+                        <td>
+                            <a asp-controller="Stock" asp-action="Index"
+                               asp-route-stockCode="@r.Code"
+                               class="stock-link" title="點擊查看 @r.Code 詳細分析">
+                                <strong>@r.Code</strong>
+                                <span class="stock-name-small">@r.Name</span>
+                            </a>
+                        </td>
+                        <td class="num">@r.CurrentPrice.ToString("F2")</td>
+                        <td class="num entry-price">@r.EntryPrice.ToString("F2")</td>
+                        <td class="num net-buy">@r.TargetPrice.ToString("F2")</td>
+                        <td class="num net-sell">@r.StopLossPrice.ToString("F2")</td>
+                        <td class="num">
+                            <span class="net-buy">@r.UpSideDisplay</span>
+                            <span class="sep">/</span>
+                            <span class="net-sell">@r.DownSideDisplay</span>
+                        </td>
+                        <td class="num">
+                            <span class="score-badge">@r.Score</span>
+                        </td>
+                        <td><span class="rec-badge @r.RecommendationCssClass">@r.RecommendationText</span></td>
+                        <td class="reason-cell">@r.Reason</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="disclaimer">
+        <strong>⚠️ 免責聲明：</strong>
+        本頁面資訊僅供參考，不構成任何投資建議。股市有風險，投資前請自行評估，
+        買賣點僅為費波那契計算結果，非保證獲利。
+    </div>
+}
+
+@* 欄位說明 *@
+<div class="legend">
+    <h2>欄位說明</h2>
+    <ul>
+        <li><strong>買點</strong>：現價所在費波那契區間的下緣支撐，適合拉回接近時買入</li>
+        <li><strong>目標</strong>：現價所在區間的上緣壓力，建議分批獲利了結</li>
+        <li><strong>停損</strong>：支撐再下一層，跌破則認賠出場</li>
+        <li><strong>評分</strong>：外資（30）+ 投信（20）+ 融資券（20）+ 費波那契（30）= 100 分</li>
+    </ul>
+</div>

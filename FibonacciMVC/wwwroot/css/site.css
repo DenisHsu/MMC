@@ -1,0 +1,331 @@
+/* ============================================================
+   台股籌碼分析 - 主樣式
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #ffffff;
+    color: #1a1a1a;
+    line-height: 1.75;
+    padding-top: 0;
+}
+
+/* ── 頂部導覽 ────────────────────────────────────────────── */
+
+.topnav {
+    background: #1a1a1a;
+    padding: 0 1.25rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.nav-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+}
+
+.nav-brand {
+    color: #fff;
+    font-weight: 600;
+    font-size: 1rem;
+    text-decoration: none;
+}
+
+.nav-links { display: flex; gap: 1.25rem; }
+
+.nav-links a {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.15s;
+}
+
+.nav-links a:hover { color: #fff; }
+
+/* ── 頁面容器 ────────────────────────────────────────────── */
+
+.container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem;
+}
+
+/* ── 頁面標題 ────────────────────────────────────────────── */
+
+h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.2rem; }
+
+.subtitle {
+    color: #666;
+    font-size: 0.875rem;
+    margin-bottom: 1.75rem;
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 1.75rem 0 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+/* ── 訊息 ────────────────────────────────────────────────── */
+
+.error-msg { color: #bb0000; font-size: 0.9rem; margin-bottom: 1.25rem; }
+.info-msg  { color: #666;    font-size: 0.88rem; margin: 0.5rem 0 1rem; }
+
+/* ── 搜尋列 ─────────────────────────────────────────────── */
+
+.search-form  { margin-bottom: 1.75rem; }
+.search-row   { display: flex; gap: 0.5rem; }
+
+input[type="text"] {
+    flex: 1;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.15s;
+}
+input[type="text"]:focus { outline: none; border-color: #333; }
+
+button[type="submit"] {
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1.5rem;
+    font-size: 1rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+button[type="submit"]:hover  { background: #444; }
+
+/* ── 股票標題區 ──────────────────────────────────────────── */
+
+.stock-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+.stock-title    { font-size: 1.2rem; font-weight: 600; }
+.stock-sub      { color: #888; font-size: 0.82rem; margin-top: 0.1rem; }
+.current-price  { font-size: 2rem; font-weight: 600; margin-top: 0.4rem; letter-spacing: -0.5px; }
+
+/* ── 高低摘要列 ──────────────────────────────────────────── */
+
+.range-row {
+    display: flex; gap: 2rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+}
+.range-item label { display: block; color: #888; font-size: 0.78rem; margin-bottom: 0.1rem; }
+.range-item strong { font-size: 1.05rem; }
+
+/* ── 通用：買賣超顏色 ────────────────────────────────────── */
+
+.net-buy  { color: #cc0000; }
+.net-sell { color: #006600; }
+.net-zero { color: #888; }
+
+/* ── 表格通用 ────────────────────────────────────────────── */
+
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-bottom: 0.5rem; }
+th {
+    text-align: left;
+    padding: 0.45rem 0.75rem;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    font-weight: 500;
+    white-space: nowrap;
+}
+td { padding: 0.45rem 0.75rem; border: 1px solid #e4e4e4; vertical-align: middle; }
+
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+tr.in-zone { background: #fffde7; }
+tr.in-zone td:first-child { font-weight: 600; }
+
+tr.summary-row { background: #f9f9f9; font-weight: 500; }
+
+.price-val { font-weight: 500; }
+
+/* diff */
+.diff-up   { color: #cc0000; }
+.diff-down { color: #006600; }
+.diff-zero { color: #444; font-weight: 500; }
+
+/* 進度條 */
+.bar-cell { width: 90px; }
+.bar-track { background: #e8e8e8; border-radius: 3px; height: 6px; overflow: hidden; }
+.bar-fill  { height: 100%; background: #555; border-radius: 3px; }
+
+/* ── 分析評分盒 ──────────────────────────────────────────── */
+
+.analysis-box {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 1.25rem;
+    margin-bottom: 1.75rem;
+    background: #fafafa;
+}
+
+.analysis-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.analysis-score-num {
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+.score-unit { font-size: 1rem; font-weight: 400; color: #888; }
+
+/* 建議徽章 */
+.rec-badge {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.rec-badge.rec-lg { font-size: 1rem; padding: 0.3rem 0.9rem; }
+.rec-buy          { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+.rec-watch        { background: #fff9c4; color: #7b5e00; border: 1px solid #ffe082; }
+.rec-avoid        { background: #fce4ec; color: #880e4f; border: 1px solid #f48fb1; }
+.rec-insufficient { background: #f5f5f5; color: #555;   border: 1px solid #ccc; }
+
+/* 買賣點列 */
+.entry-target-row {
+    display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 1rem;
+}
+.et-item label   { display: block; color: #888; font-size: 0.78rem; }
+.et-item strong  { font-size: 1.25rem; font-weight: 600; }
+.et-item small   { font-size: 0.82rem; }
+
+.entry-price { color: #1a1a1a; }
+
+/* 評分細節表 */
+.score-detail-table { margin-top: 0.5rem; }
+.score-detail-table td:nth-child(2) { text-align: right; min-width: 70px; }
+
+/* ── 現價位置梯狀圖 ──────────────────────────────────────── */
+
+.price-ladder { margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid #e0e0e0; }
+.price-ladder h2 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.75rem; }
+.ladder-wrap { display: flex; gap: 1rem; align-items: stretch; min-height: 200px; }
+.ladder-bar  { width: 18px; flex-shrink: 0; background: #e8e8e8; border-radius: 4px; position: relative; }
+
+.price-marker {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    width: 26px; height: 6px; background: #1a1a1a; border-radius: 3px;
+}
+
+.ladder-labels { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.ladder-label  { display: flex; align-items: center; gap: 0.7rem; font-size: 0.82rem; line-height: 1.3; padding: 1px 0; }
+.ladder-dot    { width: 8px; height: 8px; border-radius: 50%; background: #bbb; flex-shrink: 0; }
+.ladder-dot.current { background: #1a1a1a; transform: scale(1.5); }
+.ladder-price-val   { font-weight: 500; min-width: 62px; }
+.ladder-ratio-label { color: #888; }
+
+/* ── 融資融券格 ──────────────────────────────────────────── */
+
+.margin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+.margin-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.9rem 1rem;
+    background: #fafafa;
+}
+.margin-label  { font-size: 0.78rem; color: #888; margin-bottom: 0.2rem; }
+.margin-value  { font-size: 1.4rem; font-weight: 600; }
+.margin-change { font-size: 0.82rem; margin-top: 0.25rem; color: #555; }
+
+/* ── 推薦個股表格 ─────────────────────────────────────────── */
+
+.rec-table-wrap { overflow-x: auto; margin-bottom: 1.25rem; }
+.rec-table      { min-width: 780px; }
+
+.stock-link {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+}
+.stock-link:hover strong { text-decoration: underline; }
+.stock-name-small { font-size: 0.78rem; color: #888; margin-top: 0.1rem; }
+
+.score-badge {
+    display: inline-block;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+    font-weight: 600;
+    min-width: 36px;
+    text-align: center;
+}
+
+.reason-cell { font-size: 0.82rem; color: #555; max-width: 200px; }
+.entry-price { color: #1a1a1a; font-weight: 600; }
+.sep { color: #ccc; padding: 0 0.2rem; }
+
+/* ── 說明與頁腳 ──────────────────────────────────────────── */
+
+.disclaimer {
+    background: #fff9c4;
+    border: 1px solid #ffe082;
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    font-size: 0.82rem;
+    margin: 1.25rem 0;
+    line-height: 1.6;
+}
+
+.legend {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+    font-size: 0.88rem;
+}
+.legend h2  { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem; }
+.legend li  { margin-left: 1.2rem; margin-bottom: 0.3rem; }
+
+.note { margin-top: 1.25rem; color: #aaa; font-size: 0.78rem; }
+
+.site-footer {
+    border-top: 1px solid #e0e0e0;
+    padding: 1rem 1.25rem;
+    text-align: center;
+    font-size: 0.78rem;
+    color: #aaa;
+    margin-top: 2rem;
+}
+
+/* ── 回應式 ──────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+    .range-row      { gap: 1.25rem; }
+    .bar-cell       { display: none; }
+    table           { font-size: 0.82rem; }
+    td, th          { padding: 0.35rem 0.5rem; }
+    .current-price  { font-size: 1.6rem; }
+    .margin-grid    { grid-template-columns: 1fr; }
+    .entry-target-row { gap: 1rem; }
+}

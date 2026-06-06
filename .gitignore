@@ -1,0 +1,23 @@
+## .NET / ASP.NET Core
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+
+## Publish
+publish/
+out/
+
+## User secrets
+**/appsettings.*.json
+!**/appsettings.json
+!**/appsettings.Development.json
+
+## macOS
+.DS_Store
+Thumbs.db
+
+## Logs
+*.log

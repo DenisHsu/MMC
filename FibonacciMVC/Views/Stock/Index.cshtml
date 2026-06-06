@@ -1,0 +1,252 @@
+@model StockViewModel
+@{
+    ViewData["Title"] = Model.HasResult ? $"{Model.Code} 分析" : "個股分析";
+}
+
+<h1>個股分析</h1>
+<p class="subtitle">輸入台股代號，取得費波那契分割位、三大法人籌碼及融資融券分析</p>
+
+@* 查詢表單 *@
+<form asp-controller="Stock" asp-action="Analyze" method="post" class="search-form">
+    <div class="search-row">
+        <input type="text"
+               name="stockCode"
+               value="@Model.Code"
+               placeholder="輸入股票代號，例：2330、0050、6415"
+               maxlength="10"
+               autocomplete="off"
+               autofocus />
+        <button type="submit">查詢分析</button>
+    </div>
+</form>
+
+@if (Model.HasError)
+{
+    <p class="error-msg">⚠️ @Model.ErrorMessage</p>
+}
+
+@if (Model.HasResult)
+{
+    @* ── 股票標題 ─────────────────────────────────────── *@
+    <div class="stock-header">
+        <div class="stock-title">@Model.Name（@Model.Code）</div>
+        <div class="stock-sub">@Model.Symbol</div>
+        <div class="current-price">$@Model.CurrentPrice.ToString("F2")</div>
+    </div>
+
+    @* ── 高低摘要 ──────────────────────────────────────── *@
+    <div class="range-row">
+        <div class="range-item">
+            <label>當日最高</label>
+            <strong>@Model.DayHigh.ToString("F2")</strong>
+        </div>
+        <div class="range-item">
+            <label>當日最低</label>
+            <strong>@Model.DayLow.ToString("F2")</strong>
+        </div>
+        <div class="range-item">
+            <label>振幅</label>
+            <strong>@Model.DayRange.ToString("F2") 點 ／ @Model.DayRangePercent.ToString("F2")%</strong>
+        </div>
+    </div>
+
+    @* ── 分析結論（優先顯示）──────────────────────────── *@
+    @if (Model.HasAnalysis)
+    {
+        var a = Model.Analysis!;
+        <div class="analysis-box">
+            <div class="analysis-header">
+                <span class="analysis-score-num">@a.Total <span class="score-unit">/ 100</span></span>
+                <span class="rec-badge @a.RecommendationCssClass rec-lg">@a.RecommendationText</span>
+            </div>
+
+            @if (a.EntryPrice > 0)
+            {
+                <div class="entry-target-row">
+                    <div class="et-item">
+                        <label>建議買點</label>
+                        <strong class="entry-price">@a.EntryPrice.ToString("F2")</strong>
+                    </div>
+                    <div class="et-item">
+                        <label>目標價</label>
+                        <strong class="net-buy">@a.TargetPrice.ToString("F2")</strong>
+                        <small class="net-buy">&nbsp;(@a.UpSidePct.ToString("+F1;-F1")%)</small>
+                    </div>
+                    <div class="et-item">
+                        <label>停損價</label>
+                        <strong class="net-sell">@a.StopLossPrice.ToString("F2")</strong>
+                        <small class="net-sell">&nbsp;(@a.DownSidePct.ToString("+F1;-F1")%)</small>
+                    </div>
+                </div>
+            }
+
+            <table class="score-detail-table">
+                <thead>
+                    <tr><th>評分項目</th><th>分數</th><th>說明</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>外資動向</td>
+                        <td class="num @(a.ForeignScore > 0 ? "net-buy" : "net-sell")">@a.ForeignScore / 30</td>
+                        <td>@a.ForeignReason</td>
+                    </tr>
+                    <tr>
+                        <td>投信動向</td>
+                        <td class="num @(a.InvestmentTrustScore > 0 ? "net-buy" : "net-sell")">@a.InvestmentTrustScore / 20</td>
+                        <td>@a.InvestmentTrustReason</td>
+                    </tr>
+                    <tr>
+                        <td>融資券動向</td>
+                        <td class="num @(a.MarginScore > 0 ? "net-buy" : "net-sell")">@a.MarginScore / 20</td>
+                        <td>@a.MarginReason</td>
+                    </tr>
+                    <tr>
+                        <td>費波那契位置</td>
+                        <td class="num @(a.FibonacciScore >= 20 ? "net-buy" : "")">@a.FibonacciScore / 30</td>
+                        <td>@a.FibonacciReason</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @* ── 費波那契表格 ──────────────────────────────────── *@
+    <div class="section-title">費波那契黃金分割位</div>
+    <table>
+        <thead>
+            <tr>
+                <th>分割比例</th>
+                <th>價位</th>
+                <th>距現價</th>
+                <th>位置</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var level in Model.FibonacciLevels)
+            {
+                <tr class="@(level.IsInZone ? "in-zone" : "")">
+                    <td>@level.Label</td>
+                    <td class="price-val">@level.Price.ToString("F2")</td>
+                    <td class="@level.DiffCssClass">@level.DiffDisplayText</td>
+                    <td class="bar-cell">
+                        <div class="bar-track">
+                            <div class="bar-fill" style="@level.BarWidthStyle"></div>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @* ── 現價位置示意 ──────────────────────────────────── *@
+    <div class="price-ladder">
+        <h2>現價位置示意</h2>
+        <div class="ladder-wrap">
+            <div class="ladder-bar">
+                <div class="price-marker" style="@Model.MarkerTopStyle"></div>
+            </div>
+            <div class="ladder-labels">
+                @foreach (var level in Model.FibonacciLevels)
+                {
+                    bool isCurrent = Model.DayRange > 0 &&
+                                     Math.Abs(level.DiffFromCurrent) / Model.DayRange < 0.02;
+                    <div class="ladder-label">
+                        <span class="ladder-dot @(isCurrent ? "current" : "")"></span>
+                        <span class="ladder-price-val">@level.Price.ToString("F2")</span>
+                        <span class="ladder-ratio-label">@level.Label</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ── 三大法人近5日 ─────────────────────────────────── *@
+    <div class="section-title">三大法人近5日買賣超</div>
+    @if (Model.HasInstitutionalData)
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>外資（張）</th>
+                    <th>投信（張）</th>
+                    <th>合計（張）</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.InstitutionalHistory)
+                {
+                    <tr>
+                        <td>@r.Date</td>
+                        <td class="num @r.ForeignCssClass">@r.ForeignDisplay</td>
+                        <td class="num @r.InvestTrustCssClass">@r.InvestTrustDisplay</td>
+                        <td class="num @r.TotalCssClass"><strong>@r.TotalDisplay</strong></td>
+                    </tr>
+                }
+                @{
+                    var totalForeign = Model.InstitutionalHistory.Sum(r => r.ForeignNetK);
+                    var totalInvest  = Model.InstitutionalHistory.Sum(r => r.InvestTrustNetK);
+                    var totalAll     = Model.InstitutionalHistory.Sum(r => r.TotalNetK);
+                }
+                <tr class="summary-row">
+                    <td>合計</td>
+                    <td class="num @(totalForeign >= 0 ? "net-buy" : "net-sell")">
+                        @(totalForeign >= 0 ? $"+{totalForeign:N0}" : $"{totalForeign:N0}")
+                    </td>
+                    <td class="num @(totalInvest >= 0 ? "net-buy" : "net-sell")">
+                        @(totalInvest >= 0 ? $"+{totalInvest:N0}" : $"{totalInvest:N0}")
+                    </td>
+                    <td class="num @(totalAll >= 0 ? "net-buy" : "net-sell")">
+                        <strong>@(totalAll >= 0 ? $"+{totalAll:N0}" : $"{totalAll:N0}")</strong>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p class="info-msg">⚠️ 三大法人資料暫無法取得（TWSE 可能尚未更新今日資料，通常於收盤後 17:00 左右更新）</p>
+    }
+
+    @* ── 融資融券 ──────────────────────────────────────── *@
+    <div class="section-title">融資融券概況</div>
+    @if (Model.HasMargin)
+    {
+        var m = Model.Margin!;
+        <div class="margin-grid">
+            <div class="margin-card">
+                <div class="margin-label">融資餘額</div>
+                <div class="margin-value">@m.MarginBalanceDisplay</div>
+                <div class="margin-change @m.MarginTrendCssClass">
+                    當日變動：@m.MarginChangeDisplay
+                </div>
+            </div>
+            <div class="margin-card">
+                <div class="margin-label">融券餘額</div>
+                <div class="margin-value">@m.ShortBalanceDisplay</div>
+                <div class="margin-change @m.ShortTrendCssClass">
+                    當日變動：@m.ShortChangeDisplay
+                </div>
+            </div>
+            <div class="margin-card">
+                <div class="margin-label">融券比（融券/融資）</div>
+                <div class="margin-value @(m.ShortRatio > 20 ? "net-buy" : "")">
+                    @m.ShortRatio.ToString("F1")%
+                </div>
+                <div class="margin-change">
+                    @(m.ShortRatio > 20 ? "融券比偏高，具軋空潛力" :
+                      m.ShortRatio > 10 ? "融券比適中" : "融券比偏低")
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <p class="info-msg">⚠️ 融資融券資料暫無法取得（通常於收盤後更新）</p>
+    }
+
+    <p class="note">
+        價格來源：Yahoo Finance（約 15 分鐘延遲）｜籌碼來源：TWSE｜
+        查詢時間：@Model.QueryTime?.ToString("yyyy/MM/dd HH:mm:ss")
+    </p>
+}
