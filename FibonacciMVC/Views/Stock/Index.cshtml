@@ -4,7 +4,7 @@
 }
 
 <h1>個股分析</h1>
-<p class="subtitle">輸入台股代號，取得費波那契分割位、三大法人籌碼及融資融券分析</p>
+<p class="subtitle">輸入台股代號或中文名稱，取得費波那契分割位、三大法人籌碼及融資融券分析</p>
 
 @* 查詢表單 *@
 <form asp-controller="Stock" asp-action="Analyze" method="post" class="search-form">
@@ -12,8 +12,8 @@
         <input type="text"
                name="stockCode"
                value="@Model.Code"
-               placeholder="輸入股票代號，例：2330、0050、6415"
-               maxlength="10"
+               placeholder="股票代號或中文名稱，例：2330、台積電、聯發科"
+               maxlength="30"
                autocomplete="off"
                autofocus />
         <button type="submit">查詢分析</button>

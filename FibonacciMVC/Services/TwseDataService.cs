@@ -187,22 +187,33 @@ public class TwseDataService : ITwseDataService
                 // T86 欄位（0-based）：
                 // [0]代號 [1]名稱 [2]外買 [3]外賣 [4]外差  [5]投買 [6]投賣 [7]投差
                 // [8]自行買 [9]自行賣 [10]自行差 [11]避險買 [12]避險賣 [13]避險差 [14]合計差
-                var result = new Dictionary<string, InstitutionalSummary>(capacity: rows.Count);
+                var result    = new Dictionary<string, InstitutionalSummary>(capacity: rows.Count);
+                // 同時建立 中文名稱 → 代號 的反向字典，供中文搜尋使用
+                var nameToCode = new Dictionary<string, string>(
+                    rows.Count, StringComparer.OrdinalIgnoreCase);
+
                 foreach (var row in rows)
                 {
                     var a = ToStringArray(row);
                     if (a.Length < 15) continue;
-                    var code = a[0].Trim();
+                    var code   = a[0].Trim();
+                    var cnName = a[1].Trim();
+
                     result[code] = new InstitutionalSummary(
                         ForeignNet:     ParseLong(a[4]),
                         InvestTrustNet: ParseLong(a[7]),
                         TotalNet:       ParseLong(a[14])
                     );
-                    // 順便快取中文名稱（T86 data[i][1] 即為中文名稱）
-                    var cnName = a[1].Trim();
-                    if (!string.IsNullOrEmpty(cnName) && !string.IsNullOrEmpty(code))
+
+                    if (!string.IsNullOrEmpty(code) && !string.IsNullOrEmpty(cnName))
+                    {
                         _cache.Set($"cname_{code}", cnName, TimeSpan.FromHours(24));
+                        nameToCode[cnName] = code;   // 反向索引
+                    }
                 }
+
+                if (nameToCode.Count > 0)
+                    _cache.Set("name_to_code", nameToCode, TimeSpan.FromHours(24));
 
                 if (result.Count > 0)
                 {
@@ -221,6 +232,60 @@ public class TwseDataService : ITwseDataService
     // ═══════════════════════════════════════════════════════════
     // 輔助方法
     // ═══════════════════════════════════════════════════════════
+
+    // ═══════════════════════════════════════════════════════════
+    // 代號 / 名稱解析
+    // ═══════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// 將使用者輸入解析為股票代號：
+    ///   - 純數字 → 直接使用
+    ///   - 中文名稱 → 查 T86 反向字典（完全比對 → 前綴比對 → 包含比對）
+    ///   - 找不到 → 回傳 null
+    /// </summary>
+    public async Task<string?> ResolveStockCodeAsync(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return null;
+        var q = query.Trim();
+
+        // 純數字 → 直接當股票代號
+        if (q.All(char.IsAsciiDigit)) return q;
+
+        // 嘗試從快取取反向字典
+        if (!_cache.TryGetValue("name_to_code", out Dictionary<string, string>? nameToCode)
+            || nameToCode == null)
+        {
+            // 快取尚未建立，呼叫 T86 API 以填充（同時建立反向字典）
+            await GetAllInstitutionalAsync();
+            _cache.TryGetValue("name_to_code", out nameToCode);
+        }
+
+        if (nameToCode == null || nameToCode.Count == 0) return null;
+
+        // 1. 完全比對
+        if (nameToCode.TryGetValue(q, out var exact)) return exact;
+
+        // 2. 前綴比對（輸入文字在名稱開頭）
+        var prefix = nameToCode
+            .Where(kv => kv.Key.StartsWith(q, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(kv => kv.Key.Length)     // 優先較短（較精確）的名稱
+            .Select(kv => kv.Value)
+            .FirstOrDefault();
+        if (prefix != null) return prefix;
+
+        // 3. 包含比對（至少 2 個字元，避免單字模糊太廣）
+        if (q.Length >= 2)
+        {
+            var contains = nameToCode
+                .Where(kv => kv.Key.Contains(q, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(kv => kv.Key.Length)
+                .Select(kv => kv.Value)
+                .FirstOrDefault();
+            if (contains != null) return contains;
+        }
+
+        return null;   // 找不到
+    }
 
     // ═══════════════════════════════════════════════════════════
     // 中文名稱快取

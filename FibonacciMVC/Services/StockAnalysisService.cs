@@ -35,10 +35,22 @@ public class StockAnalysisService : IStockAnalysisService
     }
 
     // ─────────────────────────────────────────────────────────────
-    // 完整個股分析
+    // 完整個股分析（支援輸入股票代號或中文名稱）
     // ─────────────────────────────────────────────────────────────
-    public async Task<StockViewModel> GetFullAnalysisAsync(string stockCode)
+    public async Task<StockViewModel> GetFullAnalysisAsync(string query)
     {
+        // 步驟 0：將使用者輸入解析為股票代號（支援中文名稱）
+        var stockCode = await _twseService.ResolveStockCodeAsync(query.Trim());
+        if (string.IsNullOrEmpty(stockCode))
+        {
+            return new StockViewModel
+            {
+                Code         = query.Trim(),
+                ErrorMessage = $"找不到股票「{query.Trim()}」，請確認股票代號（如 2330）或中文名稱（如 台積電）是否正確。" +
+                               "上市股票可用中文名稱搜尋；上櫃股票建議直接輸入代號。"
+            };
+        }
+
         var (vmTask, instTask, marginTask) = (
             _priceService.GetStockDataAsync(stockCode),
             _twseService.GetInstitutionalHistoryAsync(stockCode),
