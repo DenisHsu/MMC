@@ -25,6 +25,8 @@ public class TwseDataService : ITwseDataService
 
     // ═══════════════════════════════════════════════════════════
     // 三大法人（單一股票，近N日）— TWSE TWT38U
+    // 策略：TWT38U 為月份資料；若本月筆數不足（月初、假日後），
+    //       自動往前補抓上一個月，確保有足夠的前交易日資料。
     // ═══════════════════════════════════════════════════════════
     public async Task<List<InstitutionalRecord>> GetInstitutionalHistoryAsync(
         string stockCode, int days = 5)
@@ -33,55 +35,77 @@ public class TwseDataService : ITwseDataService
         if (_cache.TryGetValue(key, out List<InstitutionalRecord>? cached) && cached != null)
             return cached;
 
-        var url = $"https://www.twse.com.tw/fund/TWT38U" +
-                  $"?response=json&date={Today}&stockNo={stockCode}";
-        try
+        // TWT38U 欄位順序（0-based）：
+        // [0]日期 [1]外資買 [2]外資賣 [3]外資差 [4]投信買 [5]投信賣 [6]投信差
+        // [7]自營買 [8]自營賣 [9]自營差 [10]合計差
+        static InstitutionalRecord? ParseRow(JsonElement row)
         {
-            var json = await _http.GetStringAsync(url);
-            var doc  = JsonDocument.Parse(json);
-
-            if (!TryGetDataArray(doc, out var rows)) return [];
-
-            // 從 title 解析中文名稱並快取
-            // 格式範例："113年06月 2330 台積電 各法人買賣超彙總表"
-            if (doc.RootElement.TryGetProperty("title", out var titleEl))
+            var a = ToStringArray(row);
+            if (a.Length < 11) return null;
+            return new InstitutionalRecord
             {
-                var chineseName = ExtractNameFromTitle(titleEl.GetString(), stockCode);
-                if (!string.IsNullOrEmpty(chineseName))
-                    _cache.Set($"cname_{stockCode.ToUpper()}", chineseName, TimeSpan.FromHours(24));
-            }
-
-            // TWT38U 欄位順序（0-based）：
-            // [0]日期 [1]外資買 [2]外資賣 [3]外資差 [4]投信買 [5]投信賣 [6]投信差
-            // [7]自營買 [8]自營賣 [9]自營差 [10]合計差
-            var records = rows
-                .Select(row =>
-                {
-                    var a = ToStringArray(row);
-                    if (a.Length < 11) return null;
-                    return new InstitutionalRecord
-                    {
-                        Date               = a[0],
-                        ForeignNet         = ParseLong(a[3]),
-                        InvestmentTrustNet = ParseLong(a[6]),
-                        DealerNet          = ParseLong(a[9]),
-                        TotalNet           = ParseLong(a[10]),
-                    };
-                })
-                .Where(r => r != null)
-                .Cast<InstitutionalRecord>()
-                .TakeLast(days)
-                .Reverse()   // 最新的排前面
-                .ToList();
-
-            _cache.Set(key, records, CacheTtl);
-            return records;
+                Date               = a[0],
+                ForeignNet         = ParseLong(a[3]),
+                InvestmentTrustNet = ParseLong(a[6]),
+                DealerNet          = ParseLong(a[9]),
+                TotalNet           = ParseLong(a[10]),
+            };
         }
-        catch (Exception ex)
+
+        // 依序嘗試：本月 → 上個月（月初資料不足時補充）
+        var allRecords = new List<InstitutionalRecord>();
+        var monthOffsets = new[] { 0, -1 };   // 0 = 本月, -1 = 上個月
+
+        foreach (var offset in monthOffsets)
         {
-            _logger.LogError(ex, "GetInstitutionalHistoryAsync failed: {Code}", stockCode);
-            return [];
+            var refDate = DateTime.Today.AddMonths(offset).ToString("yyyyMMdd");
+            var url = $"https://www.twse.com.tw/fund/TWT38U" +
+                      $"?response=json&date={refDate}&stockNo={stockCode}";
+            try
+            {
+                var json = await _http.GetStringAsync(url);
+                var doc  = JsonDocument.Parse(json);
+
+                if (!TryGetDataArray(doc, out var rows))
+                {
+                    // 本月尚無資料（例如月初未更新），繼續嘗試上個月
+                    _logger.LogWarning("TWT38U 無資料：{Code} refDate={Date}", stockCode, refDate);
+                    continue;
+                }
+
+                // 從 title 解析中文名稱並快取（取到就好，無須重複）
+                if (!_cache.TryGetValue($"cname_{stockCode.ToUpper()}", out string? _) &&
+                    doc.RootElement.TryGetProperty("title", out var titleEl))
+                {
+                    var chineseName = ExtractNameFromTitle(titleEl.GetString(), stockCode);
+                    if (!string.IsNullOrEmpty(chineseName))
+                        _cache.Set($"cname_{stockCode.ToUpper()}", chineseName, TimeSpan.FromHours(24));
+                }
+
+                var monthRecords = rows
+                    .Select(ParseRow)
+                    .Where(r => r != null)
+                    .Cast<InstitutionalRecord>()
+                    .ToList();
+
+                // 上個月資料插在最前面，保持日期升序
+                allRecords.InsertRange(0, monthRecords);
+
+                if (allRecords.Count >= days) break;   // 資料已足夠
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetInstitutionalHistoryAsync failed: {Code} {Date}",
+                    stockCode, refDate);
+            }
         }
+
+        if (allRecords.Count == 0) return [];
+
+        // TakeLast 取最新 N 筆，Reverse 讓最新的排前面
+        var result = allRecords.TakeLast(days).Reverse().ToList();
+        _cache.Set(key, result, CacheTtl);
+        return result;
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -92,8 +116,8 @@ public class TwseDataService : ITwseDataService
         var key = $"margin_{stockCode}_{Today}";
         if (_cache.TryGetValue(key, out MarginRecord? cached)) return cached;
 
-        // 嘗試今天及往前5個工作日
-        foreach (var date in RecentWorkdays(5))
+        // 嘗試今天及往前10個工作日（涵蓋連假後第一個交易日仍能取到前一交易日資料）
+        foreach (var date in RecentWorkdays(10))
         {
             var url = $"https://www.twse.com.tw/exchangeReport/MI_MARGN" +
                       $"?response=json&date={date}&selectType=ALL";
